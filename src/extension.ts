@@ -7,9 +7,10 @@ const cssObjectToString = (obj: Record<string, string | number>): string =>
         .map(([key, value]) => `${key}:${value};`)
         .join(" ")
 
-const generateBackgroundImage = (option: "top-left-to-bottom-right" | "top-right-to-bottom-left"): string => {
+type BackgroundImageType = "top-left-to-bottom-right" | "top-right-to-bottom-left"
+const generateBackgroundImage = (type: BackgroundImageType): string => {
     let svgXml = `<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">`
-    switch (option) {
+    switch (type) {
         case "top-left-to-bottom-right":
             svgXml += `<line 
 				x1="0%" 
@@ -29,7 +30,7 @@ const generateBackgroundImage = (option: "top-left-to-bottom-right" | "top-right
 			/>`
             break
         default:
-            const exhaustive: never = option
+            const exhaustive: never = type
     }
     svgXml += "</svg>"
 
@@ -45,12 +46,11 @@ const lineHeight = Math.max(minimumLineHeight, Math.round(goldenLineHeightRatio 
 const charsToCss = (chars: number): string => `${chars}ch`
 const linesToCss = (lines: number): string => `${lines * lineHeight}px`
 
-const centerOfRange = (start: number, end: number): number => start + Math.round((end - start) / 2)
-const centerOfRangePos = (range: vscode.Range): vscode.Position =>
-    new vscode.Position(
-        centerOfRange(range.start.line, range.end.line),
-        centerOfRange(range.start.character, range.end.character)
-    )
+const centerOfRange = (start: number, end: number): number => start + Math.floor((end - start) / 2)
+const centerPosFromWordRange = (range: vscode.Range): vscode.Position => {
+    assert(range.start.line == range.end.line)
+    return new vscode.Position(range.start.line, centerOfRange(range.start.character, range.end.character))
+}
 
 const createRangeForPositions = (pos1: vscode.Position, pos2: vscode.Position): vscode.Range => {
     const minChar = Math.min(pos1.character, pos2.character)
@@ -104,11 +104,11 @@ export function activate(context: vscode.ExtensionContext) {
 
             console.log("the definition is: " + JSON.stringify(links[0], null, 2))
             const definitionRange = links[0].targetRange
-            const definitionCenterPos = centerOfRangePos(definitionRange)
+            const definitionCenterPos = centerPosFromWordRange(definitionRange)
 
             const cursorWordRange = document.getWordRangeAtPosition(selectionPos)
             assert(cursorWordRange)
-            const cursorWordCenterPos = centerOfRangePos(cursorWordRange)
+            const cursorWordCenterPos = centerPosFromWordRange(cursorWordRange)
 
             const range = createRangeForPositions(definitionCenterPos, cursorWordCenterPos)
 
@@ -117,18 +117,19 @@ export function activate(context: vscode.ExtensionContext) {
             const widthChars = Math.abs(range.end.character - range.start.character)
             const heightLines = Math.abs(range.end.line - range.start.line)
 
-            const backgroundImage = generateBackgroundImage(
+            const backgroundType: BackgroundImageType =
                 definitionCenterPos.character <= cursorWordCenterPos.character
                     ? "top-left-to-bottom-right"
                     : "top-right-to-bottom-left"
-            )
+            const backgroundImage = generateBackgroundImage(backgroundType)
+
             const cssString = cssObjectToString({
                 position: "absolute",
-                width: charsToCss(widthChars),
-                height: linesToCss(heightLines),
+                width: charsToCss(widthChars - (backgroundType === "top-right-to-bottom-left" ? 1 : 0)),
+                height: linesToCss(heightLines - 1),
                 left: charsToCss(posXChars),
-                top: linesToCss(posYLines),
-                // 'background-color': 'white',
+                top: linesToCss(posYLines + (backgroundType === "top-right-to-bottom-left" ? 1 : 0)),
+                // "background-color": "white",
                 display: "inline-block",
                 "z-index": 1,
                 "pointer-events": "none",
@@ -136,7 +137,6 @@ export function activate(context: vscode.ExtensionContext) {
                 "background-repeat": "no-repeat",
                 "background-image": backgroundImage,
             })
-            console.log(cssString)
 
             const decoration = vscode.window.createTextEditorDecorationType({
                 before: {
