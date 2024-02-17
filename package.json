@@ -3,6 +3,10 @@
     "displayName": "Line to Definition",
     "description": "Draws a line from a variable reference to its definition",
     "version": "0.0.1",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/WesJD/vscode-ext-line-to-defn.git"
+    },
     "engines": {
         "vscode": "^1.86.0"
     },
