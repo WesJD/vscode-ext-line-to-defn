@@ -2,6 +2,8 @@
 
 VSCode extension to draw a line from a symbol reference to a symbol definition in the same file.
 
+[Install via VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=wesjd.line-to-definition)
+
 ![Demo photo](./demo.png)
 
 ## Configuration
