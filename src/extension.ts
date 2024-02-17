@@ -20,6 +20,7 @@ const generateBackgroundImage = (type: BackgroundImageType, config: Config): str
 				y2="100%" 
 				stroke="${config.lineColor}" 
                 stroke-width="${config.lineWidth}"
+                stroke-opacity="${config.lineOpacity}%"
 			/>`
             break
 
@@ -31,6 +32,7 @@ const generateBackgroundImage = (type: BackgroundImageType, config: Config): str
 				y2="100%" 
 				stroke="${config.lineColor}" 
                 stroke-width="${config.lineWidth}"
+                stroke-opacity="${config.lineOpacity}%"
 			/>`
             break
 
@@ -182,6 +184,10 @@ const calcLineHeight = (): number => {
 type Config = {
     readonly lineColor: string
     readonly lineWidth: number
+    /**
+     * Percentage opacity of the line
+     */
+    readonly lineOpacity: number
 }
 
 const getConfig = (): Config => {
@@ -189,6 +195,7 @@ const getConfig = (): Config => {
     return {
         lineColor: config.get<string>("lineColor") ?? "red",
         lineWidth: config.get<number>("lineWidth") ?? 1,
+        lineOpacity: config.get<number>("opacity") ?? 50,
     }
 }
 

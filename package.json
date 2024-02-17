@@ -25,7 +25,15 @@
                 "lineToDefinition.lineWidth": {
                     "type": "number",
                     "default": 1,
+                    "exclusiveMinimum": 0,
                     "description": "The width of the line drawn from a reference to a definition"
+                },
+                "lineToDefinition.lineOpacity": {
+                    "type": "number",
+                    "default": 50,
+                    "exclusiveMinimum": 0,
+                    "maximum": 100,
+                    "description": "The percent opacity of the line drawn from a reference to a definition"
                 }
             }
         }
