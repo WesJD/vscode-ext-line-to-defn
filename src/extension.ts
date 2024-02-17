@@ -9,7 +9,7 @@ const cssObjectToString = (obj: Record<string, string | number>): string =>
 
 type BackgroundImageType = "top-left-to-bottom-right" | "top-right-to-bottom-left"
 
-const generateBackgroundImage = (type: BackgroundImageType): string => {
+const generateBackgroundImage = (type: BackgroundImageType, config: Config): string => {
     let svgXml = `<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">`
     switch (type) {
         case "top-left-to-bottom-right":
@@ -18,7 +18,8 @@ const generateBackgroundImage = (type: BackgroundImageType): string => {
 				y1="0%" 
 				x2="100%" 
 				y2="100%" 
-				stroke="red" 
+				stroke="${config.lineColor}" 
+                stroke-width="${config.lineWidth}"
 			/>`
             break
 
@@ -28,7 +29,8 @@ const generateBackgroundImage = (type: BackgroundImageType): string => {
 				y1="0%" 
 				x2="0%" 
 				y2="100%" 
-				stroke="red" 
+				stroke="${config.lineColor}" 
+                stroke-width="${config.lineWidth}"
 			/>`
             break
 
@@ -92,6 +94,7 @@ type DecorationData = {
 type DisplayResult = { type: "new-display"; data: DecorationData } | { type: "keep-last-display" } | { type: "none" }
 
 const getDisplayDecoration = async (
+    config: Config,
     lineHeight: number,
     lastDecoration: DecorationData | null
 ): Promise<DisplayResult> => {
@@ -130,7 +133,7 @@ const getDisplayDecoration = async (
         definitionCenterPos.character <= cursorWordCenterPos.character
             ? "top-left-to-bottom-right"
             : "top-right-to-bottom-left"
-    const backgroundImage = generateBackgroundImage(backgroundType)
+    const backgroundImage = generateBackgroundImage(backgroundType, config)
 
     // Compute the X and Y of the box visually and its width and height. Special cases
     // and offsets are from tinkering around to get the right results.
@@ -170,18 +173,41 @@ const getDisplayDecoration = async (
     return { type: "new-display", data: { decoration, cursorWordRange } }
 }
 
-export function activate(context: vscode.ExtensionContext) {
+const calcLineHeight = (): number => {
     const goldenLineHeightRatio = platform() === "darwin" ? 1.5 : 1.35
     const minimumLineHeight = 8
     const fontSize = vscode.workspace.getConfiguration("editor").get<number>("fontSize")
     assert(fontSize, "could not load font size")
-    const lineHeight = Math.max(minimumLineHeight, Math.round(goldenLineHeightRatio * fontSize))
+    return Math.max(minimumLineHeight, Math.round(goldenLineHeightRatio * fontSize))
+}
 
+type Config = {
+    readonly lineColor: string
+    readonly lineWidth: number
+}
+
+const getConfig = (): Config => {
+    const config = vscode.workspace.getConfiguration("lineToDefinition")
+    return {
+        lineColor: config.get<string>("lineColor") ?? "red",
+        lineWidth: config.get<number>("lineWidth") ?? 1,
+    }
+}
+
+export function activate(context: vscode.ExtensionContext) {
+    const lineHeight = calcLineHeight()
+    let config: Config = getConfig()
     let lastDecoration: DecorationData | null = null
 
     context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(() => {
+            config = getConfig()
+        })
+    )
+
+    context.subscriptions.push(
         vscode.window.onDidChangeTextEditorSelection(async () => {
-            const result = await getDisplayDecoration(lineHeight, lastDecoration)
+            const result = await getDisplayDecoration(config, lineHeight, lastDecoration)
             const type = result.type
             switch (type) {
                 case "keep-last-display":

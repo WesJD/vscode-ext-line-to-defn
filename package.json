@@ -1,6 +1,6 @@
 {
     "name": "line-to-definition",
-    "displayName": "line-to-definition",
+    "displayName": "Line to Definition",
     "description": "Draws a line from a variable reference to its definition",
     "version": "0.0.1",
     "engines": {
@@ -13,7 +13,23 @@
         "*"
     ],
     "main": "./out/extension.js",
-    "contributes": {},
+    "contributes": {
+        "configuration": {
+            "title": "Line to Definition",
+            "properties": {
+                "lineToDefinition.lineColor": {
+                    "type": "string",
+                    "default": "red",
+                    "description": "The color of the line drawn from a reference to a definition"
+                },
+                "lineToDefinition.lineWidth": {
+                    "type": "number",
+                    "default": 1,
+                    "description": "The width of the line drawn from a reference to a definition"
+                }
+            }
+        }
+    },
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
