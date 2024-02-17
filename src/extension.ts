@@ -7,7 +7,7 @@ const cssObjectToString = (obj: Record<string, string | number>): string =>
         .map(([key, value]) => `${key}:${value};`)
         .join(" ")
 
-type BackgroundImageType = "top-left-to-bottom-right" | "top-right-to-bottom-left"
+type BackgroundImageType = "top-left-to-bottom-right" | "top-right-to-bottom-left" | "vertical"
 
 const generateBackgroundImage = (type: BackgroundImageType, config: Config): string => {
     let svgXml = `<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">`
@@ -29,6 +29,18 @@ const generateBackgroundImage = (type: BackgroundImageType, config: Config): str
 				x1="100%" 
 				y1="0%" 
 				x2="0%" 
+				y2="100%" 
+				stroke="${config.lineColor}" 
+                stroke-width="${config.lineWidth}"
+                stroke-opacity="${config.lineOpacity}%"
+			/>`
+            break
+
+        case "vertical":
+            svgXml += `<line 
+				x1="50%" 
+				y1="0%" 
+				x2="50%" 
 				y2="100%" 
 				stroke="${config.lineColor}" 
                 stroke-width="${config.lineWidth}"
@@ -124,16 +136,22 @@ const getDisplayDecoration = async (
     const decorationRange = createRangeForPositions(definitionCenterPos, cursorWordCenterPos)
 
     // Create the SVG background image to apply to the decoration
-    const backgroundType: BackgroundImageType =
-        definitionCenterPos.character <= cursorWordCenterPos.character
-            ? "top-left-to-bottom-right"
-            : "top-right-to-bottom-left"
+    const widthDiff = definitionCenterPos.character - cursorWordCenterPos.character
+    let backgroundType: BackgroundImageType
+    if (widthDiff === 0) {
+        backgroundType = "vertical"
+    } else if (widthDiff < 0) {
+        backgroundType = "top-left-to-bottom-right"
+    } else {
+        backgroundType = "top-right-to-bottom-left"
+    }
+
     const backgroundImage = generateBackgroundImage(backgroundType, config)
 
     // Compute the width and height of the visual box. Special case is from
     // tinkering with it.
     const widthChars = Math.max(
-        1,
+        2,
         decorationRange.end.character -
             decorationRange.start.character -
             (backgroundType === "top-right-to-bottom-left" ? 1 : 0)
