@@ -61,31 +61,25 @@ const createRangeForPositions = (pos1: vscode.Position, pos2: vscode.Position): 
     return new vscode.Range(new vscode.Position(minLine, minChar), new vscode.Position(maxLine, maxChar))
 }
 
-const getDefinitionLocation = async (
-    uri: vscode.Uri,
-    selection: vscode.Position
-): Promise<vscode.LocationLink | null> => {
-    const result: (vscode.Location | vscode.LocationLink)[] = await vscode.commands.executeCommand(
+const getDefinitionLocation = async (uri: vscode.Uri, selection: vscode.Position): Promise<vscode.Range | null> => {
+    const locations: (vscode.Location | vscode.LocationLink)[] = await vscode.commands.executeCommand(
         "vscode.executeDefinitionProvider",
         uri,
         selection
     )
-    const links: vscode.LocationLink[] = result.filter(
-        (elem) =>
-            "targetUri" in elem &&
-            elem.targetUri.scheme === uri.scheme &&
-            elem.targetUri.path === uri.path &&
-            elem.targetUri.fsPath === uri.fsPath
-    ) as vscode.LocationLink[]
-    if (links.length === 0) {
+    if (locations.length === 0) {
         return null
     }
-    if (links.length !== 1) {
-        console.debug("got multiple definition results", links)
+    if (locations.length !== 1) {
+        console.debug("got multiple definition locations", locations)
         return null
     }
 
-    return links[0]
+    const location = locations[0]
+    if ("targetRange" in location) {
+        return location.targetRange
+    }
+    return location.range
 }
 
 type DecorationData = {
@@ -119,13 +113,13 @@ const getDisplayDecoration = async (
     }
 
     // Find the definition for the selection
-    const definitionLoc = await getDefinitionLocation(document.uri, selectionPos)
-    if (!definitionLoc) {
+    const definitionRange = await getDefinitionLocation(document.uri, selectionPos)
+    console.log("definition", definitionRange)
+    if (!definitionRange) {
         return { type: "none" }
     }
 
     // Compute the rectangle in the editor in the area that will hold the decoration
-    const definitionRange = definitionLoc.targetRange
     const definitionCenterPos = centerPosFromWordRange(definitionRange)
     const cursorWordCenterPos = centerPosFromWordRange(cursorWordRange)
     const decorationRange = createRangeForPositions(definitionCenterPos, cursorWordCenterPos)
