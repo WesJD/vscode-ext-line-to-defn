@@ -76,7 +76,7 @@ const getDefinitionLocation = async (
     if (links.length === 0) {
         return null
     }
-    if (links.length === 1) {
+    if (links.length !== 1) {
         console.debug("got multiple definition results", links)
         return null
     }
@@ -100,9 +100,20 @@ const getDisplayDecoration = async (
         return { type: "none" }
     }
 
-    // Find the definition for the selection
     const document = editor.document
+
+    // Get the word range position to not search for the definition again
+    // if we don't need to
     const selectionPos = editor.selection.active
+    const cursorWordRange = document.getWordRangeAtPosition(selectionPos)
+    if (!cursorWordRange) {
+        return { type: "none" }
+    }
+    if (lastDecoration && cursorWordRange.isEqual(lastDecoration.cursorWordRange)) {
+        return { type: "keep-last-display" }
+    }
+
+    // Find the definition for the selection
     const definitionLoc = await getDefinitionLocation(document.uri, selectionPos)
     if (!definitionLoc) {
         return { type: "none" }
@@ -111,15 +122,7 @@ const getDisplayDecoration = async (
     // Compute the rectangle in the editor in the area that will hold the decoration
     const definitionRange = definitionLoc.targetRange
     const definitionCenterPos = centerPosFromWordRange(definitionRange)
-
-    const cursorWordRange = document.getWordRangeAtPosition(selectionPos)
-    assert(cursorWordRange)
-    if (lastDecoration && cursorWordRange.isEqual(lastDecoration.cursorWordRange)) {
-        return { type: "keep-last-display" }
-    }
-
     const cursorWordCenterPos = centerPosFromWordRange(cursorWordRange)
-
     const decorationRange = createRangeForPositions(definitionCenterPos, cursorWordCenterPos)
 
     // Create the SVG background image to apply to the decoration
@@ -136,16 +139,15 @@ const getDisplayDecoration = async (
     const widthChars =
         Math.abs(decorationRange.end.character - decorationRange.start.character) -
         (backgroundType === "top-right-to-bottom-left" ? 1 : 0)
-    const heightLines = Math.abs(decorationRange.end.line - decorationRange.start.line) - 1
+    const heightLines = Math.abs(decorationRange.end.line - decorationRange.start.line)
 
-    // Create the decoration, applying the custom CSS to create the line visual
+    // Create the CSS for the decoration to have the background SVG line
     const cssString = cssObjectToString({
         position: "absolute",
         width: charsToCss(widthChars),
         height: linesToCss(heightLines - 1, lineHeight),
         left: charsToCss(posXChars),
         top: linesToCss(posYLines, lineHeight),
-        // "background-color": "white",
         display: "inline-block",
         "z-index": 1,
         "pointer-events": "none",
@@ -153,6 +155,8 @@ const getDisplayDecoration = async (
         "background-repeat": "no-repeat",
         "background-image": backgroundImage,
     })
+
+    // Create and add the decoration to the editor
     const decoration = vscode.window.createTextEditorDecorationType({
         before: {
             contentText: "",
@@ -161,6 +165,8 @@ const getDisplayDecoration = async (
         textDecoration: `none; position: relative;`,
         rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
     })
+    editor.setDecorations(decoration, [decorationRange])
+
     return { type: "new-display", data: { decoration, cursorWordRange } }
 }
 
@@ -168,7 +174,7 @@ export function activate(context: vscode.ExtensionContext) {
     const goldenLineHeightRatio = platform() === "darwin" ? 1.5 : 1.35
     const minimumLineHeight = 8
     const fontSize = vscode.workspace.getConfiguration("editor").get<number>("fontSize")
-    assert(fontSize)
+    assert(fontSize, "could not load font size")
     const lineHeight = Math.max(minimumLineHeight, Math.round(goldenLineHeightRatio * fontSize))
 
     let lastDecoration: DecorationData | null = null
@@ -185,10 +191,14 @@ export function activate(context: vscode.ExtensionContext) {
                 case "none":
                     if (lastDecoration) {
                         lastDecoration.decoration.dispose()
+                        lastDecoration = null
                     }
                     break
 
                 case "new-display":
+                    if (lastDecoration) {
+                        lastDecoration.decoration.dispose()
+                    }
                     lastDecoration = result.data
                     break
 
