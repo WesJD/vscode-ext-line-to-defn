@@ -114,7 +114,6 @@ const getDisplayDecoration = async (
 
     // Find the definition for the selection
     const definitionRange = await getDefinitionLocation(document.uri, selectionPos)
-    console.log("definition", definitionRange)
     if (!definitionRange) {
         return { type: "none" }
     }
@@ -133,10 +132,12 @@ const getDisplayDecoration = async (
 
     // Compute the width and height of the visual box. Special case is from
     // tinkering with it.
-    const widthChars =
+    const widthChars = Math.max(
+        1,
         decorationRange.end.character -
-        decorationRange.start.character -
-        (backgroundType === "top-right-to-bottom-left" ? 1 : 0)
+            decorationRange.start.character -
+            (backgroundType === "top-right-to-bottom-left" ? 1 : 0)
+    )
     const heightLines = decorationRange.end.line - decorationRange.start.line
 
     // Create the CSS for the decoration to have the background SVG line
