@@ -135,22 +135,20 @@ const getDisplayDecoration = async (
             : "top-right-to-bottom-left"
     const backgroundImage = generateBackgroundImage(backgroundType, config)
 
-    // Compute the X and Y of the box visually and its width and height. Special cases
-    // and offsets are from tinkering around to get the right results.
-    const posXChars = decorationRange.start.character
-    const posYLines = decorationRange.start.line + (backgroundType === "top-right-to-bottom-left" ? 1 : 0)
+    // Compute the width and height of the visual box. Special case is from
+    // tinkering with it.
     const widthChars =
-        Math.abs(decorationRange.end.character - decorationRange.start.character) -
+        decorationRange.end.character -
+        decorationRange.start.character -
         (backgroundType === "top-right-to-bottom-left" ? 1 : 0)
-    const heightLines = Math.abs(decorationRange.end.line - decorationRange.start.line)
+    const heightLines = decorationRange.end.line - decorationRange.start.line
 
     // Create the CSS for the decoration to have the background SVG line
     const cssString = cssObjectToString({
         position: "absolute",
         width: charsToCss(widthChars),
         height: linesToCss(heightLines - 1, lineHeight),
-        left: charsToCss(posXChars),
-        top: linesToCss(posYLines, lineHeight),
+        top: linesToCss(1, lineHeight),
         display: "inline-block",
         "z-index": 1,
         "pointer-events": "none",
