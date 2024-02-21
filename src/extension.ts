@@ -73,7 +73,7 @@ const createRangeForPositions = (pos1: vscode.Position, pos2: vscode.Position): 
     return new vscode.Range(new vscode.Position(minLine, minChar), new vscode.Position(maxLine, maxChar))
 }
 
-const getDefinitionLocation = async (uri: vscode.Uri, selection: vscode.Position): Promise<vscode.Range | null> => {
+const getDefinitionRange = async (uri: vscode.Uri, selection: vscode.Position): Promise<vscode.Range | null> => {
     const locations: (vscode.Location | vscode.LocationLink)[] = await vscode.commands.executeCommand(
         "vscode.executeDefinitionProvider",
         uri,
@@ -88,6 +88,11 @@ const getDefinitionLocation = async (uri: vscode.Uri, selection: vscode.Position
     }
 
     const location = locations[0]
+    const locationUri: vscode.Uri = "targetUri" in location ? location.targetUri : location.uri
+    if (locationUri.path !== uri.path) {
+        return null
+    }
+
     if ("targetRange" in location) {
         return location.targetRange
     }
@@ -125,7 +130,7 @@ const getDisplayDecoration = async (
     }
 
     // Find the definition for the selection
-    const definitionRange = await getDefinitionLocation(document.uri, selectionPos)
+    const definitionRange = await getDefinitionRange(document.uri, selectionPos)
     if (!definitionRange) {
         return { type: "none" }
     }
