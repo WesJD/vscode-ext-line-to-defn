@@ -87,13 +87,20 @@ const getDefinitionRange = async (uri: vscode.Uri, selection: vscode.Position): 
         return null
     }
 
+    // We need to verify the URI is the same file. Otherwise, we'll draw a line
+    // to a definition location that doesn't exist in the current viewed file.
     const location = locations[0]
-    const locationUri: vscode.Uri = "targetUri" in location ? location.targetUri : location.uri
+    const isLocationLink = "targetUri" in location
+    const locationUri: vscode.Uri = isLocationLink ? location.targetUri : location.uri
     if (locationUri.path !== uri.path) {
         return null
     }
 
-    if ("targetRange" in location) {
+    // `targetSelectionRange` seems to be a more precise range if it is present
+    if (isLocationLink && location.targetSelectionRange) {
+        return location.targetSelectionRange
+    }
+    if (isLocationLink) {
         return location.targetRange
     }
     return location.range
